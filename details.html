@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Details</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <img src="logo.svg" alt="Form Creator Logo" class="logo">
+        <h1>Available Forms</h1>
+        <div id="availableForms" class="forms-container">
+            <!-- Forms will be loaded here -->
+        </div>
+    </div>
+    <script>
+        function logout() {
+            localStorage.removeItem('userType');
+            window.location.href = 'index.html';
+        }
+
+        // Check if user is authorized
+        if (localStorage.getItem('userType') !== 'user') {
+            window.location.href = 'index.html';
+            throw new Error('Unauthorized');
+        }
+
+        // Load available forms
+        function loadForms() {
+            const formsContainer = document.getElementById('availableForms');
+            const forms = JSON.parse(localStorage.getItem('formTemplates') || '[]');
+            
+            if (forms.length === 0) {
+                formsContainer.innerHTML = '<p class="empty-state">No forms available yet.</p>';
+                return;
+            }
+
+            formsContainer.innerHTML = forms.map(form => `
+                <div class="form-card">
+                    <h3>${form.name}</h3>
+                    <p>Fields: ${form.fields.length}</p>
+                    <button onclick="fillForm('${form.id}')" class="secondary-btn">Fill Form</button>
+                </div>
+            `).join('');
+        }
+
+        function fillForm(formId) {
+            localStorage.setItem('currentFormId', formId);
+            window.location.href = 'fill-form.html';
+        }
+
+        // Load forms when page loads
+        document.addEventListener('DOMContentLoaded', loadForms);
+    </script>
+</body>
+</html>

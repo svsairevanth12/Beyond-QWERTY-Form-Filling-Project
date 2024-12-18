@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fill Form</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <button class="back-btn" onclick="goBack()">Back to Forms</button>
+        <img src="logo.svg" alt="Form Creator Logo" class="logo">
+        <h1 id="formTitle">Fill Form</h1>
+        <form id="dynamicForm">
+            <!-- Form fields will be generated here -->
+        </form>
+    </div>
+    <script>
+        function logout() {
+            localStorage.removeItem('userType');
+            window.location.href = 'index.html';
+        }
+
+        function goBack() {
+            window.location.href = 'details.html';
+        }
+
+        // Check if user is authorized
+        if (localStorage.getItem('userType') !== 'user') {
+            window.location.href = 'index.html';
+            throw new Error('Unauthorized');
+        }
+
+        let recognition = null;
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+        }
+
+        function startSpeechRecognition(fieldId) {
+            if (!recognition) {
+                alert('Speech recognition is not supported in your browser');
+                return;
+            }
+
+            recognition.onresult = (event) => {
+                const text = event.results[0][0].transcript;
+                document.getElementById(fieldId).value = text;
+            };
+
+            recognition.start();
+        }
+
+        function generateForm() {
+            const formId = localStorage.getItem('currentFormId');
+            const forms = JSON.parse(localStorage.getItem('formTemplates') || '[]');
+            const form = forms.find(f => f.id === formId);
+
+            if (!form) {
+                alert('Form not found');
+                window.location.href = 'details.html';
+                return;
+            }
+
+            document.getElementById('formTitle').textContent = form.name;
+            const formElement = document.getElementById('dynamicForm');
+            formElement.innerHTML = ''; // Clear existing content
+
+            form.fields.forEach(field => {
+                const fieldHtml = `
+                    <div class="form-group">
+                        <label for="${field.id}">${field.name}${field.required ? ' *' : ''}</label>
+                        ${generateFieldInput(field)}
+                        <button type="button" class="voice-btn" onclick="startSpeechRecognition('${field.id}')">🎤</button>
+                    </div>
+                `;
+                formElement.innerHTML += fieldHtml;
+            });
+
+            formElement.innerHTML += '<button type="submit" id="submitBtn">Submit</button>';
+            
+            formElement.addEventListener('submit', handleSubmit);
+        }
+
+        function generateFieldInput(field) {
+            switch(field.type) {
+                case 'textarea':
+                    return `<textarea id="${field.id}" ${field.required ? 'required' : ''}></textarea>`;
+                case 'number':
+                    return `<input type="number" id="${field.id}" ${field.required ? 'required' : ''}>`;
+                case 'email':
+                    return `<input type="email" id="${field.id}" ${field.required ? 'required' : ''}>`;
+                case 'date':
+                    return `<input type="date" id="${field.id}" ${field.required ? 'required' : ''}>`;
+                default:
+                    return `<input type="text" id="${field.id}" ${field.required ? 'required' : ''}>`;
+            }
+        }
+
+        function handleSubmit(e) {
+            e.preventDefault();
+            const formId = localStorage.getItem('currentFormId');
+            const forms = JSON.parse(localStorage.getItem('formTemplates') || '[]');
+            const form = forms.find(f => f.id === formId);
+            
+            const formData = {
+                formId: formId,
+                timestamp: new Date().toISOString(),
+                data: {}
+            };
+
+            form.fields.forEach(field => {
+                formData.data[field.name] = document.getElementById(field.id).value;
+            });
+
+            // Save response
+            let responses = JSON.parse(localStorage.getItem('formData') || '[]');
+            responses.push(formData);
+            localStorage.setItem('formData', JSON.stringify(responses));
+
+            alert('Form submitted successfully!');
+            window.location.href = 'details.html';
+        }
+
+        // Generate form when page loads
+        document.addEventListener('DOMContentLoaded', generateForm);
+    </script>
+</body>
+</html>
